@@ -1,0 +1,62 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <TFT_eSPI.h>       // Include the TFT display library
+
+TFT_eSPI tft = TFT_eSPI();  // Create TFT object
+
+// Structure to receive data (must match the sender structure)
+typedef struct struct_message {
+    float temperature;
+    float humidity;
+} struct_message;
+
+// Create an instance of struct_message to hold received data
+struct_message myData;
+
+// Callback function that executes when data is received
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&myData, incomingData, sizeof(myData));
+  Serial.print("Bytes received: ");
+  Serial.println(len);
+  Serial.print("Temperature: ");
+  Serial.println(myData.temperature);
+  Serial.print("Humidity: ");
+  Serial.println(myData.humidity);
+
+  // Display received data on TFT screen
+  tft.fillScreen(tft.color565(15, 15, 15));  // Clear previous display
+
+  // Display humidity
+  tft.setTextColor(TFT_BLUE);
+  tft.drawString("Humidity: " + String(myData.humidity) + "%", 50, 30, 4);
+
+  // Display temperature
+  tft.setTextColor(TFT_RED);
+  tft.drawString("Temp: " + String(myData.temperature) + "C", 50, 80, 4);
+}
+
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  
+  // Initialize TFT screen
+  tft.init();
+  tft.setRotation(1);  // Rotate text 90 degrees
+  tft.fillScreen(tft.color565(15, 15, 15));  // Set background color
+
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Initialize ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  
+  // Register the receive callback
+  esp_now_register_recv_cb(OnDataRecv);
+}
+ 
+void loop() {
+  // Nothing needed in loop, data handling is done in the callback
+}
